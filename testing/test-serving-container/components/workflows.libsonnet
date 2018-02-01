@@ -155,9 +155,11 @@
                   "sh", "-c"
                 ],
                 args: [
-                  "until docker ps; do sleep 3; done; docker build --pull -t kai-test2/model-server:1.0 " +
+                  "until docker ps; do sleep 3; done; " +
+                      "docker build --pull -t gcr.io/kai-test2/model-server:1.0 " +
                       srcDir +
-                      "/components/k8s-model-server/docker/"
+                      "/components/k8s-model-server/docker/; " +
+                      "gcloud docker -- push gcr.io/kai-test2/model-server:1.0;"
                 ],
                 env: [
                   {
