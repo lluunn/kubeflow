@@ -31,15 +31,13 @@
       local outputDir = testDir + "/output";
       local artifactsDir = outputDir + "/artifacts";
       local srcDir = testDir + "/src";
-      local image = "gcr.io/mlkube-testing/kubeflow-testing";
+      // local image = "gcr.io/mlkube-testing/kubeflow-testing";
+      local image = "gcr.io/kai-test2/kubeflow-testing:1.0";
       // The name of the NFS volume claim to use for test files.
       local nfsVolumeClaim = "kubeflow-testing";
       // The name to use for the volume to use to contain test data.
       local dataVolume = "kubeflow-test-volume";
       {
-        // Build an Argo template to execute a particular command.
-        // step_name: Name for the template
-        // command: List to pass as the container command.
         buildTemplate(step_name, command):: {
           name: step_name,
           container: {
@@ -121,18 +119,14 @@
                 }],
                 [
                   {
-                    name: "test-deploy",
-                    template: "test-deploy",
+                    name: "build-tf-serving-image",
+                    template: "build-tf-serving-image",
                   },
                   {
                     name: "create-pr-symlink",
                     template: "create-pr-symlink",
                   },
                 ],
-                [{
-                  name: "copy-artifacts",
-                  template: "copy-artifacts",
-                }],
               ],
             },
             {
@@ -154,17 +148,42 @@
                 ],
               },
             },  // checkout
-            $.parts(namespace, name).e2e(prow_env, bucket).buildTemplate("test-deploy", [
-              "python",
-              "-m",
-              "testing.test_deploy",
-              "--project=kai-test2",
-              "--cluster=kai-kubeflow-testing",
-              "--zone=us-central1-a",
-              "--github_token=$(GIT_TOKEN)",
-              "--test_dir=" + testDir,
-              "--artifacts_dir=" + artifactsDir,
-            ]),  // test-deploy
+            {
+              name: "build-tf-serving-image",
+              container: {
+                command: [
+                  "sh", "-c"
+                ],
+                args: [
+                  "until docker ps; do sleep 3; done; docker build --pull -t kai-test2/model-server:1.0 " +
+                      srcDir +
+                      "/components/k8s-model-server/docker/"
+                ],
+                env: [
+                  {
+                    name: "DOCKER_HOST",
+                    value: "127.0.0.1", 
+                  },
+                ] + prow_env,
+                image: image,
+                volumeMounts: [
+                  {
+                    name: dataVolume,
+                    mountPath: mountPath,
+                  },
+                ],
+              },
+              sidecars: [
+                {
+                  name: "dind",
+                  image: "docker:17.10-dind",
+                  securityContext: {
+                    privileged: true,
+                  },
+                  mirrorVolumeMounts: true,
+                },
+              ],
+            },  // build-tf-serving-image
             $.parts(namespace, name).e2e(prow_env, bucket).buildTemplate("create-pr-symlink", [
               "python",
               "-m",
@@ -173,16 +192,9 @@
               "create_pr_symlink",
               "--bucket=" + bucket,
             ]),  // create-pr-symlink
-            $.parts(namespace, name).e2e(prow_env, bucket).buildTemplate("copy-artifacts", [
-              "python",
-              "-m",
-              "testing.prow_artifacts",
-              "--artifacts_dir=" + outputDir,
-              "copy_artifacts",
-              "--bucket=" + bucket,
-            ]),  // copy-artifacts
           ],  // templates
         },
       },  // e2e
   },  // parts
 }
+

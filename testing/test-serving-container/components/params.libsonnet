@@ -12,7 +12,7 @@
     workflows: {
       bucket: "kai-kubeflow",
       commit: "master",
-      name: "aaa1",
+      name: "build-image13",
       namespace: "kubeflow-test-infra",
       prow_env: "REPO_OWNER=google,REPO_NAME=kubeflow,PULL_BASE_SHA=master",
     },
