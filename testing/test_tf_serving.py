@@ -64,27 +64,38 @@ def main():
 
   args = parser.parse_args()
 
-  server = "{}.{}.svc.cluster.local".format(args.service_name, args.namespace)
-  channel = implementations.insecure_channel(server, args.port)
-  stub = prediction_service_pb2.beta_create_PredictionService_stub(channel)
+  t = test_util.TestCase()
+  t.class_name = "Kubeflow"
+  t.name = "tf-serving-image"
 
-  with tf.gfile.Open(args.image_path) as img:
-    raw_image = (img.read())
+  start = time.time()
+  try:
+    server = "{}.{}.svc.cluster.local".format(args.service_name, args.namespace)
+    channel = implementations.insecure_channel(server, args.port)
+    stub = prediction_service_pb2.beta_create_PredictionService_stub(channel)
 
-  # Send request
-  # See prediction_service.proto for gRPC request/response details.
-  request = predict_pb2.PredictRequest()
-  request.model_spec.name = 'inception'
-  request.model_spec.signature_name = 'predict_images'
-  request.inputs['images'].CopyFrom(
-      tf.make_tensor_proto(raw_image, shape=[1,]))
-  result = str(stub.Predict(request, 10.0))  # 10 secs timeout
-  print(result)
-  if args.result_path:
-    with open(args.result_path) as f:
-      expected_result = f.read()
-      print(expected_result)
-      assert(expected_result == result)
+    with tf.gfile.Open(args.image_path) as img:
+      raw_image = (img.read())
+
+    # Send request
+    # See prediction_service.proto for gRPC request/response details.
+    request = predict_pb2.PredictRequest()
+    request.model_spec.name = 'inception'
+    request.model_spec.signature_name = 'predict_images'
+    request.inputs['images'].CopyFrom(
+        tf.make_tensor_proto(raw_image, shape=[1,]))
+    result = str(stub.Predict(request, 10.0))  # 10 secs timeout
+    print(result)
+    if args.result_path:
+      with open(args.result_path) as f:
+        expected_result = f.read()
+        print(expected_result)
+        assert(expected_result == result)
+  except Exception as e:
+    t.failure = "Test failed; " + e.message
+    raise
+  finally:
+    t.time = time.time() - start
 
 if __name__ == '__main__':
   logging.basicConfig(level=logging.INFO,
