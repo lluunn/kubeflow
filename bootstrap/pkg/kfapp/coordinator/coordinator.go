@@ -195,7 +195,7 @@ func BuildKfAppFromURI(configFile string) (kftypesv3.KfApp, error) {
 }
 
 // TODO: remove this
-// This is for kfctlServer. We can remove this after kfctlServer uses kfconfig
+// This is for kfctlServer and kfupgrade. We can remove this later.
 func CreateKfAppCfgFileWithKfDef(d *kfdefsv3.KfDef) (string, error) {
 	alphaConverter := configconverters.V1alpha1{}
 	kfdefBytes, err := yaml.Marshal(d)
@@ -334,13 +334,6 @@ func LoadKfAppCfgFile(cfgfile string) (kftypesv3.KfApp, error) {
 		c.KfDef.Spec.AppDir = path.Dir(cfgfile)
 	}
 
-	// Set some defaults
-	// TODO(jlewi): This code doesn't belong here. It should probably be called from inside KfApp; e.g. from
-	// KfApp.generate. We should do all initialization of defaults as part of the reconcile loop in one function.
-	// if c.KfDef.Spec.PackageManager == "" {
-	// 	c.KfDef.Spec.PackageManager = kftypesv3.KUSTOMIZE
-	// }
-
 	return c, nil
 }
 
@@ -353,7 +346,7 @@ type coordinator struct {
 	KfDef           *kfconfig.KfConfig
 }
 
-// TODO: change this
+// TODO: Should get KfConfig instead.
 type KfDefGetter interface {
 	GetKfDef() *kfdefsv3.KfDef
 	GetPlugin(name string) (kftypesv3.KfApp, bool)
